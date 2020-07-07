@@ -1,0 +1,2 @@
+read_example: embsec{read_example_cf6a4a1e4d491272}
+write_example: b'embsec{write_example_61d766ffafaa2654}\n' <-- b means bytes, has to do with the fact you are writing here
