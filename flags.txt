@@ -1,2 +1,4 @@
 read_example: embsec{read_example_cf6a4a1e4d491272}
 write_example: b'embsec{write_example_61d766ffafaa2654}\n' <-- b means bytes, has to do with the fact you are writing here
+splitting integers: b'embsec{splitting_integers_8053c05c43ab95e7}\n'
+c read_example: b'embsec{read_example_cf6a4a1e4d491272}\n'
