@@ -18,3 +18,12 @@ write example (intro to c):
     b'embsec{write_example_61d766ffafaa2654}\n'
 noise challenge:
     embsec{noise_556e39e67bbc176a}\n'
+int to bin challenge:
+    b'embsec{int_to_bin_37f4c88457584cb9}\n'
+anagram:
+    b'embsec{anagram_dc189579139f2de5}\n'
+flash example:
+    b'embsec{flash_example_f3bf8fb0d5fe2f5c}\n'
+uart c:
+    b'embsec{uart_challenge_e96061ccba6507c6}\n'
+
