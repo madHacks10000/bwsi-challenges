@@ -14,3 +14,7 @@ heartbeat:
     embsec{heartbeat_f300c70d84c5317b}\n'
 integer flipping: 
     b'embsec{integer_flipping_44b57001746d603f}\n'
+write example (intro to c):
+    b'embsec{write_example_61d766ffafaa2654}\n'
+noise challenge:
+    embsec{noise_556e39e67bbc176a}\n'
