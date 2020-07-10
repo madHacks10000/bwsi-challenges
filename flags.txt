@@ -1,22 +1,22 @@
 read_example: 
     embsec{read_example_cf6a4a1e4d491272}
 write_example: 
-    b'embsec{write_example_61d766ffafaa2654}\n' <-- b means bytes, has to do with the fact you are writing here
+    b'embsec{write_example_61d766ffafaa2654}\n' 
 skeleton challenge (python intro): 
     b'embsec{skeleton_script_043805c7ce1cea91}\n'
 splitting integers: 
     b'embsec{splitting_integers_8053c05c43ab95e7}\n'
-(c) read_example: 
+read_example (c): 
     b'embsec{read_example_cf6a4a1e4d491272}\n'
 protocol lab (sending data): 
     b'embsec{sending_data_e3993c1af17976bb}\n'
-heartbeat: 
+protocol lab (heartbeat): 
     embsec{heartbeat_f300c70d84c5317b}\n'
 integer flipping: 
     b'embsec{integer_flipping_44b57001746d603f}\n'
 write example (intro to c):
     b'embsec{write_example_61d766ffafaa2654}\n'
-noise challenge:
+protocol lab (noise):
     embsec{noise_556e39e67bbc176a}\n'
 int to bin challenge:
     b'embsec{int_to_bin_37f4c88457584cb9}\n'
@@ -26,4 +26,8 @@ flash example:
     b'embsec{flash_example_f3bf8fb0d5fe2f5c}\n'
 uart c:
     b'embsec{uart_challenge_e96061ccba6507c6}\n'
+design:
+    b'embsec{fw_protect_3214d354b890de9e}\n'
+update:
+    b'\x00embsec{fw_update_19ff992a9736907d}\n'
 

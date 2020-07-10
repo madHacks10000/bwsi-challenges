@@ -18,35 +18,34 @@
 void uart_init(uint8_t uart)
 {
   // Implement me!!
-    
-    //1st: disable warten bit in CTL register (bit 0 furthest back one, page 453)
-    // #define UART2_CTL_R
-    //set warten bit to 0
-    //turn bit on use or oporator, use & to turn it off
-    //UART_CTL_R |= 0x40000E030 not needed, value already points to that spot in memory
-    UART2_CTL_R &= ~(0x00000001); //correct
-    
+    //page 451 is helpful
+    //1st: disable warten bit in CTL register (set bit to 0, furthest back one, page 453)
     //2nd: write integer portion of the BRD register
-    // #define UART2_IBRD_R
-    //we want 0x0a bit
-    //IBRD is address of the register but we want the bit
-    UART2_IBRD_R |= 0x0a;
-    //#define UART_IBRD_DIVINT_MASK   //0x0000FFFF  // Integer baud-rate divisor
-        
     //3rd: write fractional portion of the BRD register
-    // #define UART2_FBRD_R
-    //know it is FBRD from the paragraph
-    //we want 0x36 bit
-    UART2_FBRD_R |= 0x36; //cant just set equal because some bits are reserved, or prevents what you dont want change from being changed
-    
     //4th:write desired serial parameters to CRH register
-    // #define UART2_LCRH_R
-    UART2_LCRH_R |= 0x00000060; //8 bit usuing or will not let the 0 bits be effective
-        
     //5th: enable UART warten bit
-    //set warten bit to 1
-    UART2_CTL_R |= UART_LCRH_WLEN_8;
-    //0x00000001
+    // #define UART2_CTL_R
+    // #define UART2_IBRD_R
+    // #define UART2_FBRD_R
+    // #define UART2_LCRH_R
+    
+    UART2_CTL_R &= ~(0x00000001); //disables UART by setting the last bit to 0, inverts 
+    
+    //IBRD is address of the register but we want the bit
+    UART2_IBRD_R &= ~(UART_IBRD_DIVINT_M); //setting first half of the baud, flipping all the bits, the integer part
+    UART2_IBRD_R |= 0x0a; //adding the bits we want which is 0x0a
+        
+    UART2_FBRD_R &= ~(UART_FBRD_DIVFRAC_M); //set fractional baudrate part
+    UART2_FBRD_R |= 0x36; //sets second half of the baud rate to 0x36 (directions)
+    //cant just set equal because some bits are reserved, or prevents what you dont want change from being changed
+    
+    UART2_LCRH_R &= ~(UART_LCRH_WLEN_M); //set 8 bit word
+    UART2_LCRH_R |= UART_LCRH_WLEN_8; //same as UART2_LCRH_R |= 0x00000060;
+    
+     //8 bit using or will not let the 0 bits be effective
+        
+    UART2_CTL_R |= UART_LCRH_WLEN_8; 
+    UART2_CTL_R |= UART_CTL_UARTEN; //turn UART back on
     
 }
 
@@ -54,18 +53,15 @@ uint8_t uart_read(uint8_t uart, int blocking, int *read)
 {
   // Implement me!!
     //page 444 read
-    
-    //while (FLASH_FMC_R & FLASH_FMC_WRITE); // Wait until write bit is 1
-    //read is UARTRSR 
-    // UART2_LCRH_R |= UART_LCRH_FEN; // 0000.0010
+    //if blocking=1 then we do a blocking read, 1 is true so we do if (blocking)
     if (blocking){
-        while (UART2_FR_R & UART_FR_RXFE); // 0x00000010
-        *read = 1;
-        return UART2_DR_R & UART_DR_DATA_M; // 0x000000FF
+        while (UART2_FR_R & UART_FR_RXFE); //wait for byte (FIFO is empty)
+        *read = 1; //use a pointer, if we just did the var, the var in the memory wouldn't be updated, sets actual value to 1
+        return UART2_DR_R & UART_DR_DATA_M; //return data that is in the register (the RX value)
     } else {
-        if (UART2_FR_R & UART_FR_RXFF) { // 0x00000040
+        if (UART2_FR_R & UART_FR_RXFF) { //checks if data is available
             *read = 1;
-            return UART2_DR_R & UART_DR_DATA_M; // 0x000000FF
+            return UART2_DR_R & UART_DR_DATA_M; //return RX value
         } else {
             *read = 0;
             return 0;
@@ -76,13 +72,14 @@ uint8_t uart_read(uint8_t uart, int blocking, int *read)
 void uart_write(uint8_t uart, uint32_t data)
 {
   // Implement me!!
-    //write is UARTECR
-    while (UART2_FR_R & UART_FR_BUSY); // 0x00000008
-    UART2_DR_R = (data & UART_DR_DATA_M); // 0x000000FF
+    while (UART2_FR_R & UART_FR_BUSY); // wait for UART ready
+    UART2_DR_R = (data & UART_DR_DATA_M); //DR is the UART data register, clears the data field and writes in new data
+    //UART2_DR_R = (UART2_DR_R & ~(UART_DR_DATA_M)) | (data & 0xFF);
     
 }
 
 void uart_write_str(uint8_t uart, char *str) {
+    //below: increment the memory address, get value at the memory address and check it, null terminator is where the value is 0 and 0 is false so the loop is terminated
   while (*str) { // Loop until null terminator
     uart_write(uart, (uint32_t)*str++);
   }
