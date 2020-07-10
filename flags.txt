@@ -30,4 +30,6 @@ design:
     b'embsec{fw_protect_3214d354b890de9e}\n'
 update:
     b'\x00embsec{fw_update_19ff992a9736907d}\n'
+interrupt:
+    b'embsec{interrupt_challenge_021af42639774a3d}\n'
 
