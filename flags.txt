@@ -32,4 +32,10 @@ update:
     b'\x00embsec{fw_update_19ff992a9736907d}\n'
 interrupt:
     b'embsec{interrupt_challenge_021af42639774a3d}\n'
+echo_int (io python):
+    b'embsec{echo_int_0eb37bbb2c5da8f2}\n'
+send_file (io python):
+    b'embsec{send_file_c1c5120a1c549f37}\n'
+send_large_file:
+    b'embsec{send_large_file_77df94f7ddd212db}\n'
 
