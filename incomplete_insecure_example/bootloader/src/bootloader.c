@@ -157,18 +157,21 @@ void load_firmware(void)
 
   // TODO: Load the firmware into flash memory at 0x10000
     //need to find data to load into the memory
-    while(i < 1024 && i < size){
+    //start writing firmware to the address FW_BASE, repeat until I read all incoming firmware_blob
+    //^ look for packet size of 0 to signal the end
+    int k = 0;
+    while(k < 1000 && k < size){
         rcv = uart_read(UART1, BLOCKING, &read); 
         frame_length = (uint32_t)rcv;
         rcv = uart_read(UART1, BLOCKING, &read);
         frame_length |= (uint32_t)rcv << 8;
         for(int j = 0; j < frame_length; j++){
-            data[i] = uart_read(UART1, BLOCKING, &read);
-            uart_write(0);
+            data[k] = uart_read(UART1, BLOCKING, &read);
+            uart_write(UART1, 0);
         }
-        i+= frame_length;
+        k+= frame_length;
     }
-    program_flash(FW_BASE, data, i + 1); 
+    program_flash(FW_BASE, data, k + 1); 
     
 }
 
@@ -217,9 +220,13 @@ void boot_firmware(void)
   }
 
   // TODO: Print release message
+    //read release message from Flash and print over UART2
+    //read fw_size from flash, calculate the flash address that the release msg is at (stored right after firmware
+    // like at the #define stuff at the top)
+    //read message out from Flash and write over UART2
     uint16_t *message_base = FW_BASE + fw_size;
-    uart_write_str(UART2) //UART2 for debugging
-    while (*(message_base) != "\0"){ //checks for null pointer
+    //uart_write_str(UART2); //UART2 for debugging? not working
+    while (*(message_base) != "\0"){ //checking for null pointer
         uart_write_str(UART2, *(message_base));
     }
     

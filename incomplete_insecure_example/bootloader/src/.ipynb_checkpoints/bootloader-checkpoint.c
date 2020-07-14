@@ -12,7 +12,6 @@
 // Application Imports
 #include "uart.h"
 
-
 // Forward Declarations
 void load_initial_firmware(void);
 void load_firmware(void);
@@ -131,8 +130,11 @@ void load_firmware(void)
   uart_write_hex(UART2, version);
   nl(UART2);
 
-  // TODO: Read the firmware size from the fw_update tool
-
+  //TODO: Read the firmware size from the fw_update tool
+    rcv = uart_read(UART1, BLOCKING, &read);
+    size = (uint32_t)rcv;
+    rcv = uart_read(UART1, BLOCKING, &read);
+    size |= (uint32_t)rcv << 8;
 
   // Compare to old version and abort if older (note special case for version 0).
   uint16_t old_version = *fw_version_address;
@@ -154,7 +156,22 @@ void load_firmware(void)
   uart_write(UART1, OK); // Acknowledge the metadata.
 
   // TODO: Load the firmware into flash memory at 0x10000
-
+    //need to find data to load into the memory
+    //start writing firmware to the address FW_BASE, repeat until I read all incoming firmware_blob
+    //^ look for packet size of 0 to signal the end
+    while(i < 1000 && i < size){
+        rcv = uart_read(UART1, BLOCKING, &read); 
+        frame_length = (uint32_t)rcv;
+        rcv = uart_read(UART1, BLOCKING, &read);
+        frame_length |= (uint32_t)rcv << 8;
+        for(int j = 0; j < frame_length; j++){
+            data[i] = uart_read(UART1, BLOCKING, &read);
+            uart_write(0);
+        }
+        i+= frame_length;
+    }
+    program_flash(FW_BASE, data, i + 1); 
+    
 }
 
 
@@ -202,7 +219,22 @@ void boot_firmware(void)
   }
 
   // TODO: Print release message
-
+    //read release message from Flash and print over UART2
+    //read fw_size from flash, calculate the flash address that the release msg is at (stored right after firmware
+    // like at the #define stuff at the top)
+    //read message out from Flash and write over UART2
+    uint16_t *message_base = FW_BASE + fw_size;
+    uart_write_str(UART2) //UART2 for debugging
+    while (*(message_base) != "\0"){ //checks for null pointer
+        uart_write_str(UART2, *(message_base));
+    }
+    
+    //firmwarebase+firmwaresize
+    //METADATA_BASE 0xFC00  // base address of version and firmware size in Flash
+    //#define FW_BASE
+    
+    
   // TODO: Boot the firmware
+    
 
 }

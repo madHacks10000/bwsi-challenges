@@ -38,4 +38,8 @@ send_file (io python):
     b'embsec{send_file_c1c5120a1c549f37}\n'
 send_large_file:
     b'embsec{send_large_file_77df94f7ddd212db}\n'
+aes_decrypt (python):
+    b'embsec{aes_decrypt_4dd756ae7f5f38ee}
+aes_encrypt (python):
+    b'embsec{aes_encrypt_file_79441ee4364446ca}\n'
 
