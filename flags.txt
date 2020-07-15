@@ -42,4 +42,8 @@ aes_decrypt (python):
     b'embsec{aes_decrypt_4dd756ae7f5f38ee}
 aes_encrypt (python):
     b'embsec{aes_encrypt_file_79441ee4364446ca}\n'
+hmac_generate (python):
+    b'embsec{hmac_generate_a4e12689937d35aa}\n'
+hmac_verify (python):
+    b'embsec{hmac_verify_7b74a277b7790de5}\n'
 

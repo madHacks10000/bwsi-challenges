@@ -12,6 +12,7 @@
 // Application Imports
 #include "uart.h"
 
+
 // Forward Declarations
 void load_initial_firmware(void);
 void load_firmware(void);
@@ -42,9 +43,9 @@ extern int _binary_firmware_bin_size;
 
 
 // Device metadata
-uint16_t *fw_version_address = METADATA_BASE;
-uint16_t *fw_size_address = METADATA_BASE+2;
-
+uint16_t *fw_version_address = (uint16_t *) METADATA_BASE;
+uint16_t *fw_size_address = (uint16_t *) (METADATA_BASE + 2);
+uint8_t *fw_release_message_address;
 
 // Firmware Buffer
 unsigned char data[FLASH_PAGESIZE];
@@ -94,7 +95,7 @@ void load_initial_firmware(void) {
   uint16_t version = 2;
   uint32_t metadata = (((uint16_t) size & 0xFFFF) << 16) | (version & 0xFFFF);
   program_flash(METADATA_BASE, (uint8_t*)(&metadata), 4);
-    
+  fw_release_message_address = (uint8_t *) "This is the initial release message.";
     
   int i = 0;
   for (; i < size / FLASH_PAGESIZE; i++){
@@ -117,8 +118,6 @@ void load_firmware(void)
   uint32_t page_addr = FW_BASE;
   uint32_t version = 0;
   uint32_t size = 0;
-  uint32_t received_fw_bytes = 0;
-
 
   // Get version.
   rcv = uart_read(UART1, BLOCKING, &read);
@@ -130,11 +129,17 @@ void load_firmware(void)
   uart_write_hex(UART2, version);
   nl(UART2);
 
-  //TODO: Read the firmware size from the fw_update tool
-    rcv = uart_read(UART1, BLOCKING, &read);
-    size = (uint32_t)rcv;
-    rcv = uart_read(UART1, BLOCKING, &read);
-    size |= (uint32_t)rcv << 8;
+  // Get size.
+  rcv = uart_read(UART1, BLOCKING, &read);
+  size = (uint32_t)rcv;
+  rcv = uart_read(UART1, BLOCKING, &read);
+  size |= (uint32_t)rcv << 8;
+  
+
+  uart_write_str(UART2, "Received Firmware Size: ");
+  uart_write_hex(UART2, size);
+  nl(UART2);
+
 
   // Compare to old version and abort if older (note special case for version 0).
   uint16_t old_version = *fw_version_address;
@@ -152,27 +157,59 @@ void load_firmware(void)
   // Create 32 bit word for flash programming, version is at lower address, size is at higher address
   uint32_t metadata = ((size & 0xFFFF) << 16) | (version & 0xFFFF);
   program_flash(METADATA_BASE, (uint8_t*)(&metadata), 4);
+  fw_release_message_address = (uint8_t *) (FW_BASE + size);
 
   uart_write(UART1, OK); // Acknowledge the metadata.
 
-  // TODO: Load the firmware into flash memory at 0x10000
-    //need to find data to load into the memory
-    //start writing firmware to the address FW_BASE, repeat until I read all incoming firmware_blob
-    //^ look for packet size of 0 to signal the end
-    int k = 0;
-    while(k < 1000 && k < size){
-        rcv = uart_read(UART1, BLOCKING, &read); 
-        frame_length = (uint32_t)rcv;
-        rcv = uart_read(UART1, BLOCKING, &read);
-        frame_length |= (uint32_t)rcv << 8;
-        for(int j = 0; j < frame_length; j++){
-            data[k] = uart_read(UART1, BLOCKING, &read);
-            uart_write(UART1, 0);
-        }
-        k+= frame_length;
-    }
-    program_flash(FW_BASE, data, k + 1); 
-    
+  /* Loop here until you can get all your characters and stuff */
+  while (1) {
+
+    // Get two bytes for the length.
+    rcv = uart_read(UART1, BLOCKING, &read);
+    frame_length = (int)rcv << 8;
+    rcv = uart_read(UART1, BLOCKING, &read);
+    frame_length += (int)rcv;
+
+    // Write length debug message
+    uart_write_hex(UART2,(unsigned char)rcv);
+    nl(UART2);
+
+    // Get the number of bytes specified
+    for (int i = 0; i < frame_length; ++i){
+        data[data_index] = uart_read(UART1, BLOCKING, &read);
+        data_index += 1;
+    } //for
+
+    // If we filed our page buffer, program it
+    if (data_index == FLASH_PAGESIZE || frame_length == 0) {
+      // Try to write flash and check for error
+      if (program_flash(page_addr, data, data_index)){
+        uart_write(UART1, ERROR); // Reject the firmware
+        SysCtlReset(); // Reset device
+        return;
+      }
+#if 1
+      // Write debugging messages to UART2.
+      uart_write_str(UART2, "Page successfully programmed\nAddress: ");
+      uart_write_hex(UART2, page_addr);
+      uart_write_str(UART2, "\nBytes: ");
+      uart_write_hex(UART2, data_index);
+      nl(UART2);
+#endif
+
+      // Update to next page
+      page_addr += FLASH_PAGESIZE;
+      data_index = 0;
+
+      // If at end of firmware, go to main
+      if (frame_length == 0) {
+        uart_write(UART1, OK);
+        break;
+      }
+    } // if
+
+    uart_write(UART1, OK); // Acknowledge the frame.
+  } // while(1)
 }
 
 
@@ -213,29 +250,11 @@ long program_flash(uint32_t page_addr, unsigned char *data, unsigned int data_le
 
 void boot_firmware(void)
 {
-  uint16_t fw_size = *fw_size_address;
-  if (fw_size == 0) {
-    // No firmware installed. Return to main
-    return;
-  }
+  uart_write_str(UART2, (char *) fw_release_message_address);
 
-  // TODO: Print release message
-    //read release message from Flash and print over UART2
-    //read fw_size from flash, calculate the flash address that the release msg is at (stored right after firmware
-    // like at the #define stuff at the top)
-    //read message out from Flash and write over UART2
-    uint16_t *message_base = FW_BASE + fw_size;
-    //uart_write_str(UART2); //UART2 for debugging? not working
-    while (*(message_base) != "\0"){ //checking for null pointer
-        uart_write_str(UART2, *(message_base));
-    }
-    
-    //firmwarebase+firmwaresize
-    //METADATA_BASE 0xFC00  // base address of version and firmware size in Flash
-    //#define FW_BASE
-    
-    
-  // TODO: Boot the firmware
-    
-
+  // Boot the firmware
+    __asm(
+    "LDR R0,=0x10001\n\t"
+    "BX R0\n\t"
+  );
 }
