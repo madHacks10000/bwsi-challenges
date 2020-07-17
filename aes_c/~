@@ -1,0 +1,163 @@
+from core.challenge import ChallengeFactory, CChallenge
+from core.flag_store import flag_store
+from core.util import write_files
+from core.watchdog import wdt
+
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+
+import os
+import struct
+
+
+THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
+
+#########################
+# AES Decrypt Challenge #
+#########################
+
+aes_decrypt_description = \
+"""
+    The host tool is sending you an encrypted messaged. The message 
+    is in the following format:
+       
+    [ 0x10 ] [      0x2      ] [ variable...]
+    ----------------------------------------
+    |  IV   | Ciphertext Size | Ciphertext |
+    ----------------------------------------
+    
+    1. Read the AES key from 'aeskeyfile0.bin'
+    2. Read the 16 byte initialization vector (IV) from the serial device
+    3. Read the ciphertext size (formatted as a little-endian short) from the serial device
+    4. Read the ciphertext from the serial device
+    5. Decrypt the ciphertext using 128-bit AES in CBC mode
+
+Resources:
+
+<https://docs.python.org/3/library/struct.html>
+
+<https://pycryptodome.readthedocs.io/en/latest/src/cipher/aes.html>
+"""
+
+
+def aes_decrypt_setup(lesson_path, grader_path):
+    write_files('aeskeyfile0.bin', [lesson_path, grader_path], content=b'\x41' * 16)
+
+
+def aes_decrypt_grader(ser):
+    wdt.enable(2)
+
+    cipher = AES.new(key=b'thistheembseckey', mode=AES.MODE_CBC)
+
+    pt = pad(flag_store.dispense(), AES.block_size)
+    ct = cipher.encrypt(pt)
+    ct_size = struct.pack('<H', len(ct))
+
+    ser.write(cipher.iv)
+    ser.write(ct_size)
+    ser.write(ct)
+    print('iv then ct')
+    print(cipher.iv)
+    print(ct)
+
+    ser.read_until()
+    wdt.disable()
+
+
+def aes_decrypt_solution():
+    pass
+
+AESDecrypt = ChallengeFactory(name='aes_decrypt',
+                              description=aes_decrypt_description,
+                              grader=aes_decrypt_grader,
+                              solution=aes_decrypt_solution,
+                              setup=aes_decrypt_setup,
+                              base_class=CChallenge)
+
+
+###############################
+# AES Encrypted Echo Challenge #
+###############################
+
+
+aes_encrypted_echo_description = \
+"""
+    The host tool is sending you an encrypted message. Decrypt
+    the message and send it back encrypted with a different IV. The 
+    message needs to be formatted as follows:
+    
+    [ 0x10 ] [      0x2      ] [ variable...]
+    ----------------------------------------
+    |  IV   | Ciphertext Size | Ciphertext |
+    ----------------------------------------
+    
+    1. Read the AES key from 'aeskeyfile.bin'
+    2. Read the 16 byte initialization vector (IV) from the serial device
+    3. Read the ciphertext size (formatted as a little-endian short) from the serial device
+    4. Read the ciphertext from the serial device
+    5. Decrypt the ciphertext using 128-bit AES in CBC mode
+    2. Re-encrypt the plaintext with the same key but a new IV
+    3. Send the IV to the serial device
+    4. Send the ciphertext size (formatted as a little-endian short) to the serial device
+    5. Send the ciphertext to the serial device
+    6. Read the response
+
+"""
+
+
+def aes_encrypted_echo_setup(lesson_path, grader_path):
+    # Generate aeskeyfile1.bin and store in grader/student path
+    write_files('aeskeyfile2.bin', paths=[lesson_path, grader_path], content=b'thistheembseckey')
+    # Generate plaintext.txt and store in grader
+    write_files('echos.txt', paths=[grader_path], content='a' * 32 + '\n', mode='w+')
+
+
+def aes_encrypted_echo_grader(ser):
+    wdt.enable(5)
+
+    from Crypto.Cipher import AES
+    from Crypto.Util.Padding import pad, unpad
+    import embsec
+    import struct
+
+    # read key from keyfile
+    with open('aeskeyfile2.bin', 'rb') as fp:
+        key = fp.read()
+
+    with open('echos.txt') as fp:
+        echo = fp.read().encode()
+
+    cipher = AES.new(key, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(echo, cipher.block_size))
+
+    ser.write(cipher.iv)
+    ser.write(struct.pack('<H', len(ct_bytes)))
+    ser.write(ct_bytes)
+
+    # send iv and ciphertext
+    recv_iv = ser.read(16)
+    recv_ct_size, = struct.unpack('<H', ser.read(2))
+    recv_ct_bytes = ser.read(recv_ct_size)
+
+    recv_cipher = AES.new(key, AES.MODE_CBC, iv=recv_iv)
+    recv_pt_bytes = unpad(recv_cipher.decrypt(recv_ct_bytes), AES.block_size)
+
+    if recv_iv == cipher.iv or recv_pt_bytes != echo:
+        print('incorrect\n'.encode())
+        return
+
+    # read flag
+    ser.write(flag_store.dispense())
+
+    wdt.disable()
+
+
+def aes_encrypted_echo_solution():
+    pass
+
+AESEncryptedEcho = ChallengeFactory(name='aes_encrypted_echo',
+                                    description=aes_encrypted_echo_description,
+                                    grader=aes_encrypted_echo_grader,
+                                    solution=aes_encrypted_echo_solution,
+                                    setup=aes_encrypted_echo_setup,
+                                    base_class=CChallenge)
