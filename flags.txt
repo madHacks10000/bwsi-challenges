@@ -52,5 +52,9 @@ xor:
     b'embsec{xor_650e67c878bed7a8}\n'
 two_time_pad:
     b'embsec{two_time_pad_ad5903bfcb5e44cd}\n'
+spa_easy:
+    b'embsec{spa_easy_76f25edd5416910f}\n'
+dpa_setup:
+    b'embsec{dpa_setup_75b451f578b8b4f9}\n'
 
 
